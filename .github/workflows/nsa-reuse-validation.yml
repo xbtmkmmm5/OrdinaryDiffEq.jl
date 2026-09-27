@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         version: ['1.10.12', '1.13.1']
-        package: [OrdinaryDiffEqNonlinearSolve, SimpleNonlinearSolve]
+        package: [SimpleNonlinearSolve]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: xbtmkmmm5/NonlinearSolve.jl
-          ref: 7a2f4658cb870835c7e2baf2d193a7ce400df283
+          ref: c8f4330e9427546173be054bb4423c1c5902ea73
           path: nonlinear-dependency
       - uses: julia-actions/setup-julia@v3
         with:
