@@ -1,0 +1,33 @@
+name: Validate original Newton round-off regression
+on:
+  push:
+    branches: [ci/validate-newton-roundoff]
+permissions:
+  contents: read
+jobs:
+  original-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.10.12', '1.13.1']
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      JULIA_PKG_PRECOMPILE_AUTO: '0'
+      JULIA_NUM_PRECOMPILE_TASKS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: xbtmkmmm5/NonlinearSolve.jl
+          ref: 2dffbd6fcc4bd943a1d29169501895bc97881fff
+          path: nonlinear-dependency
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '${{ matrix.version }}'
+      - uses: julia-actions/cache@v3
+      - name: Prepare existing source and dependencies
+        run: julia --startup-file=no .github/diagnostics/prepare_newton_roundoff.jl OrdinaryDiffEqNonlinearSolve
+      - name: Run unchanged regression, tolerance, and warm-start files
+        run: julia --startup-file=no --check-bounds=auto --threads=2 --project=.validation-env .github/diagnostics/newton_roundoff_originals.jl
