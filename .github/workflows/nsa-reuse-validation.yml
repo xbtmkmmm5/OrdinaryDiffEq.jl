@@ -1,4 +1,4 @@
-name: Validate unchanged nonlinear and SDIRK suites
+name: Validate combined nonlinear fixes with unchanged suites
 on:
   push:
     branches: [ci/validate-nsa-reuse]
@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         version: ['1.10.12', '1.13.1']
-        package: [OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqSDIRK]
+        package: [OrdinaryDiffEqNonlinearSolve, SimpleNonlinearSolve]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -20,6 +20,11 @@ jobs:
       GROUP: Core
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: xbtmkmmm5/NonlinearSolve.jl
+          ref: 7a2f4658cb870835c7e2baf2d193a7ce400df283
+          path: nonlinear-dependency
       - uses: julia-actions/setup-julia@v3
         with:
           version: '${{ matrix.version }}'
@@ -27,4 +32,7 @@ jobs:
       - name: Prepare original package test dependencies
         run: julia --startup-file=no .github/diagnostics/full_nonlinear.jl '${{ matrix.package }}'
       - name: Run complete unchanged Core suite with CI bounds and coverage
-        run: julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage='@lib/${{ matrix.package }}' --project=.validation-env 'lib/${{ matrix.package }}/test/runtests.jl'
+        run: |
+          source_root=.
+          if [ '${{ matrix.package }}' = SimpleNonlinearSolve ]; then source_root=nonlinear-dependency; fi
+          julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage="@$source_root/lib/${{ matrix.package }}" --project=.validation-env "$source_root/lib/${{ matrix.package }}/test/runtests.jl"

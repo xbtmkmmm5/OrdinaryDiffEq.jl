@@ -1,11 +1,12 @@
 using Pkg, TOML
 name = ARGS[1]
-root = pwd()
+workspace = pwd()
+root = name == "SimpleNonlinearSolve" ? joinpath(workspace,"nonlinear-dependency") : workspace
 package = TOML.parsefile(joinpath(root, "lib", name, "Project.toml"))
 deps = merge(package["deps"], package["extras"])
 deps[name] = package["uuid"]
 compat = Dict(k => v for (k,v) in package["compat"] if k == "julia" || haskey(deps,k))
-env = joinpath(root, ".validation-env")
+env = joinpath(workspace, ".validation-env")
 mkpath(env)
 open(joinpath(env,"Project.toml"),"w") do io
     TOML.print(io, Dict("deps"=>deps,"compat"=>compat))
@@ -13,7 +14,7 @@ end
 local_paths = Dict{String,String}()
 function collect_local(n)
     haskey(local_paths,n) && return
-    path = joinpath(root,"lib",n)
+    path = n in ("SimpleNonlinearSolve", "NonlinearSolveBase", "BracketingNonlinearSolve") ? joinpath(workspace,"nonlinear-dependency","lib",n) : joinpath(root,"lib",n)
     isfile(joinpath(path,"Project.toml")) || return
     local_paths[n] = path
     p = TOML.parsefile(joinpath(path,"Project.toml"))
