@@ -1,0 +1,49 @@
+name: Diagnose original Jacobian reuse regression
+on:
+  push:
+    branches: [ci/validate-nsa-reuse]
+permissions:
+  contents: read
+jobs:
+  nsa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      JULIA_PKG_PRECOMPILE_AUTO: '0'
+      JULIA_NUM_PRECOMPILE_TASKS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.13.1'
+      - uses: julia-actions/cache@v3
+      - name: Prepare original test dependencies
+        shell: julia --startup-file=no {0}
+        run: |
+          using Pkg
+          Pkg.activate(".validation-env")
+          libs = ["DiffEqBase", "OrdinaryDiffEqCore", "OrdinaryDiffEqDifferentiation",
+                  "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqBDF", "OrdinaryDiffEqSDIRK",
+                  "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqRosenbrockTableaus"]
+          Pkg.develop([PackageSpec(path=abspath("lib", name)) for name in libs])
+          Pkg.add([PackageSpec(name=name, version=version) for (name, version) in [
+              "NonlinearSolve" => "4.32.0", "NonlinearSolveBase" => "2.54.0",
+              "NonlinearSolveFirstOrder" => "2.10.0", "LinearSolve" => "5.18.1",
+              "ADTypes" => "1.24.0", "SciMLBase" => "3.56.1",
+              "ArrayInterface" => "7.30.2", "ForwardDiff" => "1.4.6",
+              "SciMLOperators" => "1.30.1", "RecursiveArrayTools" => "4.5.3"]])
+          Pkg.add(["Test", "LinearAlgebra"])
+      - name: Compare isolated source behaviors on the same runner
+        run: |
+          for mode in source no_stall no_rounding; do
+            julia --startup-file=no --check-bounds=yes --threads=1 --project=.validation-env .github/diagnostics/nsa_reuse.jl "$mode"
+          done
+      - name: Run unchanged original Jacobian reuse test file
+        shell: julia --startup-file=no --check-bounds=yes --threads=1 --project=.validation-env {0}
+        run: |
+          using Test, LinearAlgebra
+          @show Sys.CPU_NAME BLAS.get_config()
+          @testset "Original Jacobian reuse tests" begin
+              include(abspath("lib/OrdinaryDiffEqNonlinearSolve/test/nsa_jacobian_reuse_tests.jl"))
+          end
