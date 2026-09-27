@@ -1,0 +1,47 @@
+name: Validate nonlinear fix with minimum dependency constraints
+on:
+  push:
+    branches: [ci/validate-nsa-downgrade]
+permissions:
+  contents: read
+jobs:
+  minimum-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [foundation, mass_matrix, iteration, convergence]
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    env:
+      JULIA_PKG_PRECOMPILE_AUTO: '0'
+      JULIA_NUM_PRECOMPILE_TASKS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+      GROUP: Core
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: xbtmkmmm5/NonlinearSolve.jl
+          ref: 2dffbd6fcc4bd943a1d29169501895bc97881fff
+          path: nonlinear-dependency
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.11.9'
+      - uses: julia-actions/cache@v3
+      - name: Select only the candidate SimpleNonlinearSolve source
+        run: julia --startup-file=no .github/diagnostics/prepare_minimum_nonlinear.jl
+      - uses: julia-actions/julia-downgrade-compat@30b83cf94e89744fcbd7ea5496be4967d6fbe540
+        with:
+          projects: lib/OrdinaryDiffEqNonlinearSolve
+          skip: '${{ env.DOWNGRADE_SKIP }}'
+          julia_version: '1.11'
+      - name: Prepare unchanged test dependencies at downgraded constraints
+        run: julia --startup-file=no .github/diagnostics/minimum_nonlinear.jl OrdinaryDiffEqNonlinearSolve
+      - name: Run original Core files
+        run: julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage="@lib/OrdinaryDiffEqNonlinearSolve" --project=.validation-env .github/diagnostics/nsa_core_shards.jl '${{ matrix.shard }}'
+      - name: Archive exact dependency resolution
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minimum-environment-${{ matrix.shard }}
+          path: .validation-env/*.toml
