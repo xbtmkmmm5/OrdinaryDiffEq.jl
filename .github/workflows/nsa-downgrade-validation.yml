@@ -45,3 +45,5 @@ jobs:
         with:
           name: minimum-environment-${{ matrix.shard }}
           path: .validation-env/*.toml
+          include-hidden-files: true
+          if-no-files-found: error
