@@ -10,10 +10,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '1.13.1', mode: source, suite: reuse, coverage: none}
-          - {version: '1.13.1', mode: source, suite: reuse, coverage: user}
-          - {version: '1.13.1', mode: fma_residual, suite: reuse, coverage: user}
-          - {version: '1.10.12', mode: source, suite: noinit, coverage: user}
+          - {version: '1.13.1', mode: fma_residual, suite: reuse, coverage: none}
+          - {version: '1.10.12', mode: noinit_roundoff, suite: noinit, coverage: user}
+          - {version: '1.13.1', mode: noinit_roundoff, suite: noinit, coverage: user}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:

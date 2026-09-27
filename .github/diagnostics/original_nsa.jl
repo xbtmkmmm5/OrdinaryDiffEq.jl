@@ -1,7 +1,9 @@
 using Test
 mode = get(ARGS, 1, "source")
 suite = get(ARGS, 2, "reuse")
-if mode != "source"
+if mode == "noinit_roundoff"
+    include(joinpath(@__DIR__, "nsa_noinit_roundoff.jl"))
+elseif mode != "source"
     prefix = first(split(read(joinpath(@__DIR__, "nsa_reuse.jl"), String), "original = read"))
     include_string(Main, prefix)
 end
