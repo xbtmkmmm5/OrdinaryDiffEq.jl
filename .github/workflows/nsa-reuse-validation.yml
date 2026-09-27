@@ -1,50 +1,30 @@
-name: Compare exact CI arithmetic and original nonlinear tests
+name: Validate unchanged nonlinear and SDIRK suites
 on:
   push:
     branches: [ci/validate-nsa-reuse]
 permissions:
   contents: read
 jobs:
-  nsa:
+  original-tests:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {version: '1.13.1', mode: fma_residual, suite: reuse, coverage: none}
-          - {version: '1.10.12', mode: noinit_roundoff, suite: noinit, coverage: user}
-          - {version: '1.13.1', mode: noinit_roundoff, suite: noinit, coverage: user}
+        version: ['1.10.12', '1.13.1']
+        package: [OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqSDIRK]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
       JULIA_PKG_PRECOMPILE_AUTO: '0'
       JULIA_NUM_PRECOMPILE_TASKS: '2'
       OPENBLAS_NUM_THREADS: '1'
+      GROUP: Core
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: '${{ matrix.version }}'
       - uses: julia-actions/cache@v3
-      - name: Prepare original test dependencies
-        shell: julia --startup-file=no {0}
-        run: |
-          using Pkg
-          Pkg.activate(".validation-env")
-          libs = ["DiffEqBase", "OrdinaryDiffEqCore", "OrdinaryDiffEqDifferentiation",
-                  "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqBDF", "OrdinaryDiffEqSDIRK",
-                  "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqRosenbrockTableaus"]
-          Pkg.develop([PackageSpec(path=abspath("lib", name)) for name in libs])
-          Pkg.add([PackageSpec(name=name, version=version) for (name, version) in [
-              "NonlinearSolve" => "4.32.0", "NonlinearSolveBase" => "2.54.0",
-              "NonlinearSolveFirstOrder" => "2.10.0", "LinearSolve" => "5.18.1",
-              "ADTypes" => "1.24.0", "SciMLBase" => "3.56.1",
-              "ArrayInterface" => "7.30.2", "ForwardDiff" => "1.4.6",
-              "SciMLOperators" => "1.30.1", "RecursiveArrayTools" => "4.5.3"]])
-          Pkg.add(["Test", "LinearAlgebra", "SimpleNonlinearSolve", "NonlinearSolveBase", "OrdinaryDiffEqTsit5", "StaticArrays", "LineSearch"])
-      - name: Run unchanged original tests with CI bounds settings
-        env:
-          VALIDATION_MODE: ${{ matrix.mode }}
-          VALIDATION_SUITE: ${{ matrix.suite }}
-          VALIDATION_COVERAGE: ${{ matrix.coverage }}
-        run: |
-          julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage="$VALIDATION_COVERAGE" --project=.validation-env .github/diagnostics/original_nsa.jl "$VALIDATION_MODE" "$VALIDATION_SUITE"
+      - name: Prepare original package test dependencies
+        run: julia --startup-file=no .github/diagnostics/full_nonlinear.jl '${{ matrix.package }}'
+      - name: Run complete unchanged Core suite with CI bounds and coverage
+        run: julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage='@lib/${{ matrix.package }}' --project=.validation-env 'lib/${{ matrix.package }}/test/runtests.jl'
