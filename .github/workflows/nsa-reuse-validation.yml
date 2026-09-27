@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: xbtmkmmm5/NonlinearSolve.jl
-          ref: c8f4330e9427546173be054bb4423c1c5902ea73
+          ref: 2dffbd6fcc4bd943a1d29169501895bc97881fff
           path: nonlinear-dependency
       - uses: julia-actions/setup-julia@v3
         with:
