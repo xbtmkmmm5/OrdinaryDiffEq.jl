@@ -1320,8 +1320,18 @@ _mmdiag(mass_matrix::ScalarOperator) = convert(Number, mass_matrix)
             end
             if can_smooth_est(nlsolver) && _esdirk_smooth_est(alg)
                 est = nlsolver.cache.dz
+                rhs = nlsolver.cache.k
+                mass_matrix = integrator.f.mass_matrix
+                # W = J - M/(γ*dt), so W*est = -M*tmp/(γ*dt).
+                # Use the derivative buffer for the scaled right-hand side.
+                invγdt = inv(dt * nlsolver.γ)
+                if mass_matrix === I
+                    @.. broadcast = false rhs = -tmp * invγdt
+                else
+                    mul!(_vec(rhs), mass_matrix, _vec(tmp), -invγdt, false)
+                end
                 linres = dolinsolve(
-                    integrator, nlsolver.cache.linsolve; b = _vec(tmp),
+                    integrator, nlsolver.cache.linsolve; b = _vec(rhs),
                     linu = _vec(est)
                 )
                 integrator.stats.nsolve += 1
@@ -2384,7 +2394,10 @@ end
             end
             if can_smooth_est(nlsolver) && _esdirk_smooth_est(alg)
                 integrator.stats.nsolve += 1
-                est = _reshape(get_W(nlsolver) \ _vec(tmp_est), axes(tmp_est))
+                mass_matrix = integrator.f.mass_matrix
+                rhs = mass_matrix === I ? _vec(tmp_est) : mass_matrix * _vec(tmp_est)
+                rhs = -rhs / (dt * nlsolver.γ)
+                est = _reshape(get_W(nlsolver) \ rhs, axes(tmp_est))
             else
                 est = tmp_est
             end
