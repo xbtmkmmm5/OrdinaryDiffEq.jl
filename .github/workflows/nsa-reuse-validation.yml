@@ -10,7 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         version: ['1.10.12', '1.13.1']
-        package: [SimpleNonlinearSolve]
+        package: [OrdinaryDiffEqNonlinearSolve]
+        shard: [foundation, mass_matrix, iteration, convergence]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -31,8 +32,6 @@ jobs:
       - uses: julia-actions/cache@v3
       - name: Prepare original package test dependencies
         run: julia --startup-file=no .github/diagnostics/full_nonlinear.jl '${{ matrix.package }}'
-      - name: Run complete unchanged Core suite with CI bounds and coverage
+      - name: Run unchanged original Core files with CI bounds and coverage
         run: |
-          source_root=.
-          if [ '${{ matrix.package }}' = SimpleNonlinearSolve ]; then source_root=nonlinear-dependency; fi
-          julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage="@$source_root/lib/${{ matrix.package }}" --project=.validation-env "$source_root/lib/${{ matrix.package }}/test/runtests.jl"
+          julia --startup-file=no --check-bounds=auto --threads=2 --code-coverage="@lib/${{ matrix.package }}" --project=.validation-env .github/diagnostics/nsa_core_shards.jl '${{ matrix.shard }}'
